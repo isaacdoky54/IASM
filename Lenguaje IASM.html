@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>IASM Traductor</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+    color:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+
+.app{
+    width:420px;
+    background:#1c1c1c;
+    padding:20px;
+    border-radius:15px;
+    box-shadow:0 0 20px rgba(0,0,0,0.5);
+}
+
+h2{
+    text-align:center;
+    margin-bottom:10px;
+}
+
+textarea{
+    width:100%;
+    height:120px;
+    border-radius:10px;
+    padding:10px;
+    font-size:14px;
+    resize:none;
+    outline:none;
+    border:none;
+}
+
+.buttons{
+    display:flex;
+    gap:10px;
+}
+
+button{
+    flex:1;
+    margin-top:10px;
+    padding:10px;
+    border:none;
+    border-radius:10px;
+    background:#00c6ff;
+    color:white;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+button:hover{
+    background:#0099cc;
+}
+
+#resultado{
+    margin-top:10px;
+    background:#333;
+    padding:10px;
+    border-radius:10px;
+    max-height:200px;
+    overflow:auto;
+    white-space:pre-wrap;
+    font-size:14px;
+}
+
+.copy{
+    background:#4caf50;
+}
+
+.copy:hover{
+    background:#388e3c;
+}
+
+.info{
+    font-size:12px;
+    opacity:0.7;
+    margin-top:5px;
+    text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+<h2>Traductor IASM</h2>
+
+<textarea id="input" placeholder="Escribe o pega texto..."></textarea>
+
+<div class="buttons">
+<button onclick="traducir()">Traducir</button>
+<button class="copy" onclick="copiar()">Copiar</button>
+</div>
+
+<div id="resultado"></div>
+<div class="info">Detecta automáticamente si es código o texto normal</div>
+</div>
+
+<script>
+const dic = { /* tu diccionario (igual que ya tienes) */ 
+'a':'fghjfbvijhsdfbghsfbvkhjsrbigyubwihbkvhjbfkshdbruihgbikhsfgrtehsdfh6tsrhje5hhji9rthujioghuiunisegbuarbvybawervbieryhgyhbilaergyblafv',
+'b':'funiaerghuifgerhujiogrehoaghhiarghawergyhiarhiergyhuiwfhbiaerghfhuiaerghihigaeryhahiergahg',
+'c':'-fgfjisgbiwbdfhigbioashjdbfoqwboyfgbqhowbgfiohbqwerihebigfyqebibbcv',
+'d':'gsdnwrghuerfvhbirgyhbwrfghbwefhbiwrfghbwefhbhbjvsbhjsfghwrghuirghuiwrfghuigaskf',
+'e':'ohbiwgyuwrggyiwrhuirgihbuerghuierghuigrhuorghunorghunoergbjngwrhbuiwrghuiowrghbuigwrhbujwrgibwrgbjikwrgbui56',
+'f':'ggyhui2gyi2efhui2efhuiwerfghuioerfghuorghuo2ergohu2erghuo2ergfd.',
+'g':'ph28rvhui2erfhuiwrgvhui24fhui2rghuio24ghui24fhu24flf',
+'h':'scvbjkazvhbjasdvhbjkdvbfghervfu2wt4v823y4bf9y24gy9249ygfb2yrbhibiasbdifbqahdbfiyevbqifviovs',
+'i':'cvbn','j':'ftujl','k':'dxfh','l':'lgg',
+'m':'2hjwefghjwefghujfweghjwefhuifwehuiwefhuiqefghuiergghiqerguigqrgighuqrg35ty',
+'n':'dghhuiwgyhiwrghbuiwrgbuiwrbjniwrbjniwrbbjniwrbbjiwrhbiwrhbuiwrvbh',
+'o':'hfg','p':'vbb','q':'dfgngn',
+'r':'dgegethth83ghyurdh9wu479ty3hrguh3ryhg3gtyrgy3ghha',
+'s':'dvuoqehf92refughethethethethethrf38gh423hg3rhbg724b9gb24ghbwr',
+'t':'dgi25bg5hwrguiwrghuiogwhuihethgbn349ughb9345bng93hfhteer',
+'u':'brgjnikrghbjighbirgbuirgiburgbuirgehuifbjkwefohqefjnklwdfjkbwdbjkefjkbvbk',
+'v':'dhwdhbjkwrgvhbjsdhbkwefhbjkscvnqefbjksfvjneffg',
+'w':'hug324ryfhgy23bfg4ygbfy92bryg24fyb24y9fg2y4fhby24gfy24gffgv',
+'x':'rgeer9rhbgy824byfbyf24b9yfgb2y9rgby924gfy9qbgy94gfy92bgy9g',
+'y':'awjdvbn24fbjdwbgfy84bhi2bfgy934bhigbdfygbf4y9gfvrywe',
+'z':'dfgbsurgb823yhbg923rbgy9hb24y9gb92y4bgy924sfgwrhethfgherhesrhefshetheethhetlethkethoethjethojethoethjoethujiwsghuiwgbg9y24bgy924bgdfv',
+' ':'/'
+};
+
+const inv = Object.fromEntries(Object.entries(dic).map(([k,v]) => [v,k]));
+
+function normalizar(texto){
+    return texto.toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"");
+}
+
+// 🔥 detección mejorada
+function esRaro(texto){
+    let palabras = texto.split(/\s+/);
+    let matches = palabras.filter(p => inv[p]).length;
+    return matches > 3;
+}
+
+// 🔥 limpieza inteligente
+function limpiar(texto){
+    return texto
+        .replace(/\b(\w+)( \1\b)+/g, '$1') // repeticiones
+        .replace(/\s+/g," ")
+        .trim();
+}
+
+function aRaro(texto){
+    return texto.split("").map(l => dic[l] || l).join(" ");
+}
+
+function aEsp(texto){
+    let res = texto.split(/\s+/).map(p => {
+        if(p === "/") return " ";
+        return inv[p] || "";
+    }).join("");
+
+    return limpiar(res);
+}
+
+function traducir(){
+    let raw = input.value;
+    if(!raw.trim()) return;
+
+    let texto = normalizar(raw);
+    let resultado = esRaro(texto) ? aEsp(texto) : aRaro(texto);
+
+    document.getElementById("resultado").innerText = resultado;
+}
+
+// copiar resultado
+function copiar(){
+    let texto = document.getElementById("resultado").innerText;
+    if(!texto) return;
+
+    navigator.clipboard.writeText(texto);
+    alert("Copiado al portapapeles");
+}
+</script>
+
+</body>
+</html>
